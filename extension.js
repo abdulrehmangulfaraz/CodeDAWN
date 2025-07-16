@@ -6,7 +6,6 @@ require('dotenv').config({ path: __dirname + '/.env' });
 function activate(context) {
     console.log('Congratulations, your extension "CodeDawn" is now active!');
 
-    // The single, intelligent command for Ctrl+L
     const invokeCommand = vscode.commands.registerCommand('codedawn.invoke', async () => {
         const editor = vscode.window.activeTextEditor;
         const selection = editor ? editor.selection : undefined;
@@ -19,7 +18,6 @@ function activate(context) {
         }
     });
 
-    // The command to open our custom proxy terminal
     const openTerminalCommand = vscode.commands.registerCommand('codedawn.openTerminal', () => {
         const pty = new DawnTerminal();
         const terminal = vscode.window.createTerminal({ name: 'DAWN', pty });
@@ -29,7 +27,6 @@ function activate(context) {
     context.subscriptions.push(invokeCommand, openTerminalCommand);
 }
 
-// --- The Advanced Pseudoterminal Implementation ---
 class DawnTerminal {
     constructor() {
         this.writeEmitter = new vscode.EventEmitter();
@@ -46,36 +43,29 @@ class DawnTerminal {
     close() {}
 
     handleInput(data) {
-        if (data === '\r') { // User pressed Enter
+        if (data === '\r') {
             this.writeEmitter.fire('\r\n');
-            
-            // Parse the command
             if (this.commandLine.trim().startsWith('dawn ')) {
                 const userPrompt = this.commandLine.replace('dawn ', '').trim();
                 const editor = vscode.window.activeTextEditor;
                 const selection = editor ? editor.selection : undefined;
-
-                // Process the request and write output back to this terminal
                 processRequest(userPrompt, editor, selection, 'terminal', this.writeEmitter);
             } else if (this.commandLine.trim() !== '') {
                 this.writeEmitter.fire(`Unknown command: "${this.commandLine.trim()}". Please use the format: dawn <prompt>\r\n`);
             }
-            
-            this.commandLine = ''; // Reset for next command
-            this.writeEmitter.fire('$ '); // Show the prompt again
-        } else if (data === '\x7f') { // User pressed Backspace
+            this.commandLine = '';
+            this.writeEmitter.fire('$ ');
+        } else if (data === '\x7f') {
             if (this.commandLine.length > 0) {
                 this.commandLine = this.commandLine.slice(0, -1);
-                this.writeEmitter.fire('\b \b'); // Move cursor back, write space, move back again
+                this.writeEmitter.fire('\b \b');
             }
         } else {
             this.commandLine += data;
-            this.writeEmitter.fire(data); // Echo character to the terminal
+            this.writeEmitter.fire(data);
         }
     }
 }
-
-// --- Helper Functions ---
 
 function isShellCommandQuery(prompt) {
     const keywords = [ 'git', 'docker', 'npm', 'yarn', 'ls', 'cd', 'mkdir', 'grep', 'find', 'ssh', 'list', 'show', 'files', 'command', 'terminal', 'shell', 'cli' ];
@@ -83,14 +73,14 @@ function isShellCommandQuery(prompt) {
     return keywords.some(keyword => lowerCasePrompt.includes(keyword));
 }
 
-// Main processing function now accepts an optional 'ptyEmitter' to write back to the terminal
+// Main processing function
 async function processRequest(userPrompt, editor, selection, outputTarget, ptyEmitter = null) {
     if (outputTarget === 'editor' && !editor) {
         return vscode.window.showInformationMessage('No active editor to write to.');
     }
     
     try {
-        if (!ptyEmitter) { // Show progress notification only for non-terminal commands
+        if (!ptyEmitter) {
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
                 title: "CodeDawn is thinking...",
@@ -111,6 +101,13 @@ async function processRequest(userPrompt, editor, selection, outputTarget, ptyEm
     }
 }
 
+// Extracts raw code from a markdown code block
+function extractCode(text) {
+    const codeBlockRegex = /```(?:\w+)?\n([\s\S]+?)\n```/;
+    const match = text.match(codeBlockRegex);
+    return match ? match[1] : text;
+}
+
 async function runApiCall(userPrompt, editor, selection, outputTarget, ptyEmitter) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("GEMINI_API_KEY not found in .env file.");
@@ -118,15 +115,21 @@ async function runApiCall(userPrompt, editor, selection, outputTarget, ptyEmitte
     const modelName = "gemini-1.5-flash";
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
+    // NEW: Get the language of the current file to provide context
+    const fileLanguage = editor ? editor.document.languageId : 'text';
+
     let fullPrompt = userPrompt;
     if (selection && !selection.isEmpty && editor) {
         const selectedText = editor.document.getText(selection);
         fullPrompt = `${userPrompt}:\n\n\`\`\`\n${selectedText}\n\`\`\``;
     }
 
+    // UPDATED: The system prompt now includes the file's language
+    const systemPrompt = `You are a VS Code AI assistant. Your response must be only the code itself, with no explanation or markdown formatting. The user is currently in a file of type '${fileLanguage}'. Fulfill the following request: ${fullPrompt}`;
+
     const payload = {
         contents: [{
-            parts: [{ text: `You are a VS Code AI assistant. Generate only the raw code or command for the following request, without any explanation, intro, or markdown formatting. Request: ${fullPrompt}` }]
+            parts: [{ text: systemPrompt }]
         }]
     };
 
@@ -142,20 +145,22 @@ async function runApiCall(userPrompt, editor, selection, outputTarget, ptyEmitte
         throw new Error("API returned no candidates.");
     }
     
-    const generatedText = result.candidates[0].content.parts[0].text.trim();
+    // NEW: Extract only the code from the AI's response
+    const rawText = result.candidates[0].content.parts[0].text;
+    const generatedText = extractCode(rawText).trim();
 
     if (outputTarget === 'terminal') {
-        if (ptyEmitter) { // If called from our custom terminal, write back to it
+        if (ptyEmitter) {
             ptyEmitter.fire(`${generatedText}\r\n`);
-        } else { // If called from Ctrl+L, send to a standard terminal
+        } else {
             let terminal = vscode.window.terminals.find(t => t.name === 'DAWN') || vscode.window.createTerminal("DAWN");
             terminal.show();
             terminal.sendText(generatedText, false);
         }
-    } else { // 'editor'
+    } else {
         editor.edit(editBuilder => {
             editBuilder.replace(selection, generatedText);
-});
+        });
     }
 
     if (!ptyEmitter) {
