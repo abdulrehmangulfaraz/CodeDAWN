@@ -10,7 +10,8 @@ function activate(context) {
     const invokeCommand = vscode.commands.registerCommand('codedawn.invoke', async () => {
         const editor = vscode.window.activeTextEditor;
         const selection = editor ? editor.selection : undefined;
-        const userPrompt = await vscode.window.showInputBox({ prompt: "CodeDawn" });
+        // MODIFIED: Removed placeholder text for a cleaner look
+        const userPrompt = await vscode.window.showInputBox({ prompt: ">" });
 
         if (userPrompt) {
             const target = isShellCommandQuery(userPrompt) ? 'terminal' : 'editor';
@@ -33,21 +34,19 @@ class DawnInputTerminal {
     constructor() {
         this.writeEmitter = new vscode.EventEmitter();
         this.onDidWrite = this.writeEmitter.event;
-        // Emitter to close the terminal
         this.closeEmitter = new vscode.EventEmitter();
         this.onDidClose = this.closeEmitter.event;
         this.commandLine = '';
     }
 
     open() {
-        this.writeEmitter.fire('Enter your prompt and press Enter. The terminal will close automatically.\r\n\r\n');
+        // MODIFIED: Removed all welcome messages for a completely silent terminal
         this.writeEmitter.fire('> ');
     }
 
     close() {}
 
     handleInput(data) {
-        // Handle Enter key
         if (data === '\r') { 
             this.writeEmitter.fire('\r\n');
             const userPrompt = this.commandLine.trim();
@@ -57,17 +56,15 @@ class DawnInputTerminal {
                 const selection = editor ? editor.selection : undefined;
                 const target = isShellCommandQuery(userPrompt) ? 'terminal' : 'editor';
                 
-                // Process the request, then close the terminal
                 processRequest(userPrompt, editor, selection, target).then(() => {
-                    this.closeEmitter.fire(); // Close the terminal on success
+                    this.closeEmitter.fire();
                 });
             } else {
-                this.closeEmitter.fire(); // Close if input is empty
+                this.closeEmitter.fire();
             }
             return;
         } 
         
-        // Handle Backspace key
         if (data === '\x7f') { 
             if (this.commandLine.length > 0) {
                 this.commandLine = this.commandLine.slice(0, -1);
@@ -76,7 +73,6 @@ class DawnInputTerminal {
             return;
         } 
         
-        // Handle all other characters
         this.commandLine += data;
         this.writeEmitter.fire(data);
     }
@@ -102,12 +98,8 @@ async function processRequest(userPrompt, editor, selection, outputTarget) {
     }
     
     try {
-        await vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
-            title: "CodeDawn is thinking...",
-        }, () => {
-             return runApiCall(userPrompt, editor, selection, outputTarget);
-        });
+        // MODIFIED: Removed the withProgress notification wrapper for a silent experience
+        await runApiCall(userPrompt, editor, selection, outputTarget);
     } catch (error) {
         console.error(error);
         vscode.window.showErrorMessage('CodeDawn Error: ' + error.message);
@@ -149,17 +141,17 @@ async function runApiCall(userPrompt, editor, selection, outputTarget) {
     const generatedText = extractCode(rawText).trim();
 
     if (outputTarget === 'terminal') {
-        let terminal = vscode.window.terminals.find(t => t.name !== 'DAWN Input'); // Find any standard terminal
-        if (!terminal) { terminal = vscode.window.createTerminal(); } // Or create a new one
+        let terminal = vscode.window.terminals.find(t => t.name !== 'DAWN Input');
+        if (!terminal) { terminal = vscode.window.createTerminal(); }
         terminal.show();
         terminal.sendText(generatedText, false);
-    } else { // 'editor'
+    } else {
         editor.edit(editBuilder => {
             editBuilder.replace(selection, generatedText);
         });
     }
 
-    vscode.window.showInformationMessage("CodeDawn finished!");
+    // MODIFIED: Removed the final success message
 }
 
 function deactivate() {}
