@@ -1,144 +1,153 @@
 const vscode = require('vscode');
 const fetch = require('node-fetch');
 
-require('dotenv').config({ path: __dirname + '/.env' });
-
 function activate(context) {
     console.log('Congratulations, your extension "CodeDawn" is now active!');
 
-    // Command for Ctrl+L (Input Box)
+    const setApiKeyCommand = vscode.commands.registerCommand('codedawn.setApiKey', () => {
+        const config = vscode.workspace.getConfiguration('codedawn');
+        const geminiKey = config.get('geminiApiKey');
+        const settingId = geminiKey ? 'codedawn.geminiApiKey' : 'codedawn.groqApiKey';
+        vscode.commands.executeCommand('workbench.action.openSettings', settingId);
+    });
+
+    const focusOnGeminiCommand = vscode.commands.registerCommand('codedawn.focusOnGeminiKey', () => {
+        vscode.commands.executeCommand('workbench.action.openSettings', 'codedawn.geminiApiKey');
+    });
+    const focusOnGroqCommand = vscode.commands.registerCommand('codedawn.focusOnGroqKey', () => {
+        vscode.commands.executeCommand('workbench.action.openSettings', 'codedawn.groqApiKey');
+    });
+
     const invokeCommand = vscode.commands.registerCommand('codedawn.invoke', async () => {
         const editor = vscode.window.activeTextEditor;
         const selection = editor ? editor.selection : undefined;
-        // MODIFIED: Removed placeholder text for a cleaner look
         const userPrompt = await vscode.window.showInputBox({ prompt: ">" });
-
         if (userPrompt) {
-            const target = isShellCommandQuery(userPrompt) ? 'terminal' : 'editor';
-            await processRequest(userPrompt, editor, selection, target);
+            await processRequest(userPrompt, editor, selection);
         }
     });
     
-    // Command for Ctrl+Shift+L (Terminal Input)
     const openTerminalCommand = vscode.commands.registerCommand('codedawn.openTerminal', () => {
         const pty = new DawnInputTerminal();
         const terminal = vscode.window.createTerminal({ name: 'DAWN Input', pty });
         terminal.show();
     });
 
-    context.subscriptions.push(invokeCommand, openTerminalCommand);
+    context.subscriptions.push(
+        invokeCommand, 
+        openTerminalCommand, 
+        setApiKeyCommand,
+        focusOnGeminiCommand,
+        focusOnGroqCommand
+    );
 }
 
-// The new, streamlined Pseudoterminal for input only
 class DawnInputTerminal {
-    constructor() {
-        this.writeEmitter = new vscode.EventEmitter();
-        this.onDidWrite = this.writeEmitter.event;
-        this.closeEmitter = new vscode.EventEmitter();
-        this.onDidClose = this.closeEmitter.event;
-        this.commandLine = '';
-    }
-
-    open() {
-        // MODIFIED: Removed all welcome messages for a completely silent terminal
-        this.writeEmitter.fire('> ');
-    }
-
+    constructor() { this.writeEmitter = new vscode.EventEmitter(); this.onDidWrite = this.writeEmitter.event; this.closeEmitter = new vscode.EventEmitter(); this.onDidClose = this.closeEmitter.event; this.commandLine = ''; }
+    open() { this.writeEmitter.fire('> '); }
     close() {}
-
     handleInput(data) {
-        if (data === '\r') { 
+        if (data === '\r') {
             this.writeEmitter.fire('\r\n');
             const userPrompt = this.commandLine.trim();
-            
             if (userPrompt) {
                 const editor = vscode.window.activeTextEditor;
                 const selection = editor ? editor.selection : undefined;
-                const target = isShellCommandQuery(userPrompt) ? 'terminal' : 'editor';
-                
-                processRequest(userPrompt, editor, selection, target).then(() => {
-                    this.closeEmitter.fire();
-                });
-            } else {
-                this.closeEmitter.fire();
-            }
-            return;
-        } 
-        
-        if (data === '\x7f') { 
+                processRequest(userPrompt, editor, selection).then(() => { this.closeEmitter.fire(); });
+            } else { this.closeEmitter.fire(); }
+        } else if (data === '\x7f') {
             if (this.commandLine.length > 0) {
                 this.commandLine = this.commandLine.slice(0, -1);
                 this.writeEmitter.fire('\b \b');
             }
-            return;
-        } 
-        
-        this.commandLine += data;
-        this.writeEmitter.fire(data);
+        } else {
+            this.commandLine += data;
+            this.writeEmitter.fire(data);
+        }
     }
 }
 
 // --- Helper Functions ---
 
 function isShellCommandQuery(prompt) {
-    const keywords = [ 'git', 'docker', 'npm', 'yarn', 'ls', 'cd', 'mkdir', 'grep', 'find', 'ssh', 'list', 'show', 'files', 'command', 'terminal', 'shell', 'cli' ];
+    const keywords = ['git', 'docker', 'npm', 'yarn', 'ls', 'cd', 'mkdir', 'grep', 'find', 'ssh', 'list', 'show', 'files', 'command', 'terminal', 'shell', 'cli'];
     const lowerCasePrompt = prompt.toLowerCase();
     return keywords.some(keyword => lowerCasePrompt.includes(keyword));
 }
-
 function extractCode(text) {
     const codeBlockRegex = /```(?:\w+)?\n([\s\S]+?)\n```/;
     const match = text.match(codeBlockRegex);
     return match ? match[1] : text;
 }
 
-async function processRequest(userPrompt, editor, selection, outputTarget) {
-    if (outputTarget === 'editor' && !editor) {
-        return vscode.window.showInformationMessage('No active editor to write to.');
-    }
-    
-    try {
-        // MODIFIED: Removed the withProgress notification wrapper for a silent experience
-        await runApiCall(userPrompt, editor, selection, outputTarget);
-    } catch (error) {
-        console.error(error);
+// MODIFIED: The final, most helpful error handler
+async function handleApiError(error) {
+    const errorMessage = error.message.toLowerCase();
+
+    if (errorMessage.includes('429') || errorMessage.includes('quota')) {
+        const selection = await vscode.window.showErrorMessage(
+            'CodeDawn: API usage quota reached. Try another provider or change your key.',
+            'Open Settings'
+        );
+        if (selection === 'Open Settings') {
+            vscode.commands.executeCommand('codedawn.setApiKey');
+        }
+    } else if (errorMessage.includes('400') || errorMessage.includes('401') || errorMessage.includes('api key not valid')) {
+        const selection = await vscode.window.showErrorMessage(
+            'CodeDawn: Your API Key is invalid or has been revoked.',
+            'Change API Key'
+        );
+        if (selection === 'Change API Key') {
+            vscode.commands.executeCommand('codedawn.setApiKey');
+        }
+    } else {
         vscode.window.showErrorMessage('CodeDawn Error: ' + error.message);
     }
 }
 
-async function runApiCall(userPrompt, editor, selection, outputTarget) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY not found in .env file.");
+async function processRequest(userPrompt, editor, selection) {
+    const outputTarget = isShellCommandQuery(userPrompt) ? 'terminal' : 'editor';
 
-    const modelName = "gemini-1.5-flash";
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-    const fileLanguage = editor ? editor.document.languageId : 'text';
-
-    let fullPrompt = userPrompt;
-    if (selection && !selection.isEmpty && editor) {
-        const selectedText = editor.document.getText(selection);
-        fullPrompt = `${userPrompt}:\n\n\`\`\`\n${selectedText}\n\`\`\``;
-    }
-
-    const systemPrompt = `You are a VS Code AI assistant. Your response must be only the code itself, with no explanation or markdown formatting. The user is currently in a file of type '${fileLanguage}'. Fulfill the following request: ${fullPrompt}`;
-
-    const payload = { contents: [{ parts: [{ text: systemPrompt }] }] };
-
-    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-
-    if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
-    }
-
-    const result = await response.json();
-    if (!result.candidates || !result.candidates.length) {
-        throw new Error("API returned no candidates.");
+    if (outputTarget === 'editor' && !editor) {
+        return vscode.window.showInformationMessage('No active editor to write to.');
     }
     
-    const rawText = result.candidates[0].content.parts[0].text;
-    const generatedText = extractCode(rawText).trim();
+    const config = vscode.workspace.getConfiguration('codedawn');
+    const geminiKey = config.get('geminiApiKey');
+    const groqKey = config.get('groqApiKey');
+
+    let provider;
+    if (geminiKey) {
+        provider = 'Gemini';
+    } else if (groqKey) {
+        provider = 'Groq';
+    } else {
+        const selection = await vscode.window.showInformationMessage(
+            'Welcome to CodeDawn! Please set your AI API Key to begin.', 'Open Settings'
+        );
+        if (selection === 'Open Settings') {
+            vscode.commands.executeCommand('codedawn.setApiKey');
+        }
+        return;
+    }
+
+    try {
+        await runApiCall(userPrompt, editor, selection, outputTarget, provider);
+    } catch (error) {
+        console.error(error);
+        handleApiError(error);
+    }
+}
+
+async function runApiCall(userPrompt, editor, selection, outputTarget, provider) {
+    let resultText;
+    if (provider === 'Groq') {
+        resultText = await callGroqAPI(userPrompt, editor, selection);
+    } else {
+        resultText = await callGeminiAPI(userPrompt, editor, selection);
+    }
+
+    const generatedText = extractCode(resultText).trim();
 
     if (outputTarget === 'terminal') {
         let terminal = vscode.window.terminals.find(t => t.name !== 'DAWN Input');
@@ -150,8 +159,45 @@ async function runApiCall(userPrompt, editor, selection, outputTarget) {
             editBuilder.replace(selection, generatedText);
         });
     }
+}
 
-    // MODIFIED: Removed the final success message
+function constructFullPrompt(userPrompt, editor, selection) {
+    const fileLanguage = editor ? editor.document.languageId : 'text';
+    let fullPrompt = userPrompt;
+    if (selection && !selection.isEmpty && editor) {
+        const selectedText = editor.document.getText(selection);
+        fullPrompt = `${userPrompt}:\n\n\`\`\`\n${selectedText}\n\`\`\``;
+    }
+    return `You are a VS Code AI assistant. Your response must be only the code itself, with no explanation or markdown formatting. The user is currently in a file of type '${fileLanguage}'. Fulfill the following request: ${fullPrompt}`;
+}
+async function callGeminiAPI(userPrompt, editor, selection) {
+    const apiKey = vscode.workspace.getConfiguration('codedawn').get('geminiApiKey');
+    if (!apiKey) throw new Error("API key not found.");
+    const modelName = "gemini-1.5-flash";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    const systemPrompt = constructFullPrompt(userPrompt, editor, selection);
+    const payload = { contents: [{ parts: [{ text: systemPrompt }] }] };
+    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!response.ok) throw new Error(`API key not valid or another API error occurred (${response.status})`);
+    const result = await response.json();
+    if (!result.candidates || !result.candidates.length) throw new Error("API returned no candidates.");
+    return result.candidates[0].content.parts[0].text;
+}
+async function callGroqAPI(userPrompt, editor, selection) {
+    const apiKey = vscode.workspace.getConfiguration('codedawn').get('groqApiKey');
+    if (!apiKey) throw new Error("API key not found.");
+    const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+    const systemPrompt = constructFullPrompt(userPrompt, editor, selection);
+    const payload = { model: "llama3-8b-8192", messages: [{ role: "user", content: systemPrompt }] };
+    const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) throw new Error(`API key not valid or another API error occurred (${response.status})`);
+    const result = await response.json();
+    if (!result.choices || !result.choices.length) throw new Error("API returned no choices.");
+    return result.choices[0].message.content;
 }
 
 function deactivate() {}
