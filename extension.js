@@ -1,41 +1,88 @@
-// The module 'vscode' contains the VS Code extensibility API
 const vscode = require('vscode');
+const fetch = require('node-fetch');
 
-/**
- * This method is called when your extension is activated.
- * @param {vscode.ExtensionContext} context
- */
+// Load environment variables from .env file
+require('dotenv').config({ path: __dirname + '/.env' });
+
 function activate(context) {
-
     console.log('Congratulations, your extension "CodeDawn" is now active!');
 
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with registerCommand
-    // The commandId parameter must match the command field in package.json
     let disposable = vscode.commands.registerCommand('codedawn.invoke', async function () {
-        // This function is now async to allow for awaiting user input
-
-        // 1. Get the active text editor
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
-            vscode.window.showInformationMessage('No active text editor found. Please open a file.');
-            return; // Exit if no editor is open
+            vscode.window.showInformationMessage('No active text editor found.');
+            return;
         }
 
-        // 2. Show an input box to get the user's prompt
-        // This mimics the command palette's appearance
+        const originalSelection = editor.selection;
+
         const userPrompt = await vscode.window.showInputBox({
             prompt: "CodeDawn: What would you like to do?",
-            placeHolder: "e.g., 'refactor this to use arrow functions' or 'create a python class for a user'",
-            ignoreFocusOut: true, // Keep the input box open even if focus moves
+            placeHolder: "e.g., 'refactor this to use arrow functions'",
+            ignoreFocusOut: true,
         });
 
-        // 3. Check if the user provided a prompt
         if (userPrompt) {
-            // For now, we'll just show the prompt back to the user to confirm it works.
-            // In the next step, we will send this to the AI.
-            vscode.window.showInformationMessage(`CodeDawn received: "${userPrompt}"`);
-            console.log(`User Prompt: ${userPrompt}`);
+            try {
+                await vscode.window.withProgress({
+                    location: vscode.ProgressLocation.Notification,
+                    title: "CodeDawn is thinking...",
+                    cancellable: true
+                }, async (progress, token) => {
+
+                    // --- GEMINI API CALL ---
+                    // SECURE: Get API key from environment variable
+                    const apiKey = process.env.GEMINI_API_KEY;
+                    if (!apiKey) {
+                        throw new Error("GEMINI_API_KEY not found. Please add it to your .env file.");
+                    }
+                    
+                    // CORRECTED: Use a valid and current model name
+                    const modelName = "gemini-1.5-flash";
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+                    const selectedText = editor.document.getText(originalSelection);
+                    let fullPrompt = userPrompt;
+                    if (selectedText) {
+                        fullPrompt = `${userPrompt}:\n\n\`\`\`\n${selectedText}\n\`\`\``;
+                    }
+
+                    const payload = {
+                        contents: [{
+                            parts: [{ text: `You are a VS Code AI assistant called CodeDawn. Generate only the raw code for the following request, without any explanation, intro, or markdown formatting. Request: ${fullPrompt}` }]
+                        }]
+                    };
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (!result.candidates || result.candidates.length === 0) {
+                        throw new Error("API returned no candidates in the response.");
+                    }
+                    
+                    const generatedText = result.candidates[0].content.parts[0].text;
+
+                    editor.edit(editBuilder => {
+                        editBuilder.replace(originalSelection, generatedText);
+                    });
+
+                    vscode.window.showInformationMessage("CodeDawn generated your code!");
+                });
+
+            } catch (error) {
+                console.error(error);
+                vscode.window.showErrorMessage('CodeDawn Error: ' + error.message);
+            }
         } else {
             vscode.window.showInformationMessage('CodeDawn command cancelled.');
         }
@@ -44,10 +91,9 @@ function activate(context) {
     context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
 function deactivate() {}
 
 module.exports = {
     activate,
     deactivate
-}
+};
