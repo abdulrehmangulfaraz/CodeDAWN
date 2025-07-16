@@ -1,0 +1,47 @@
+{
+  "name": "codedawn",
+  "displayName": "CodeDawn",
+  "description": "A discreet, powerful, and context-aware AI code assistant.",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:codedawn.invoke"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codedawn.invoke",
+        "title": "CodeDawn: Invoke"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "codedawn.invoke",
+        "key": "ctrl+l",
+        "mac": "cmd+l",
+        "when": "editorTextFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "node ./test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "18.x",
+    "eslint": "^8.56.0",
+    "vscode-test": "^1.6.1"
+  },
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  }
+}
