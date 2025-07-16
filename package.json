@@ -2,7 +2,7 @@
   "name": "codedawn",
   "displayName": "CodeDawn",
   "description": "A discreet, powerful, and context-aware AI code assistant.",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -11,18 +11,18 @@
   ],
   "activationEvents": [
     "onCommand:codedawn.invoke",
-    "onCommand:codedawn.terminalInvoke"
+    "onCommand:codedawn.openTerminal"
   ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
       {
         "command": "codedawn.invoke",
-        "title": "CodeDawn: Invoke from Editor"
+        "title": "CodeDawn: Invoke"
       },
       {
-        "command": "codedawn.terminalInvoke",
-        "title": "CodeDawn: Invoke for Terminal/Editor"
+        "command": "codedawn.openTerminal",
+        "title": "CodeDawn: Open DAWN Terminal"
       }
     ],
     "keybindings": [
