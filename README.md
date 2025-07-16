@@ -83,27 +83,18 @@ CodeDawn was built with the belief that AI in the editor should **feel like magi
 -   Paste it in `codedawn.groqApiKey`
     
 
+---
+
 ## 📂 Project Structure
 
-File
+| File             | Purpose |
+|------------------|---------|
+| `extension.js`   | 🔧 Core logic (commands, context detection, API calls, insertion) |
+| `package.json`   | 📦 Metadata, commands, keybindings, configuration schema |
+| `.gitignore`     | 🚫 Version control exclusions |
+| `package-lock.json` | 📌 Locked dependencies for consistent installs |
 
-Purpose
-
-`extension.js`
-
-🔧 Core logic (commands, context detection, API calls, insertion)
-
-`package.json`
-
-📦 Metadata, commands, keybindings, configuration schema
-
-`.gitignore`
-
-🚫 Version control exclusions
-
-`package-lock.json`
-
-📌 Locked dependencies for consistent installs
+---
 
 ## 🔍 Behind the Scenes (Technical Overview)
 
