@@ -2,7 +2,7 @@
   "name": "codedawn",
   "displayName": "CodeDawn",
   "description": "A discreet, powerful, and context-aware AI code assistant.",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "publisher": "abdulrehmangulfaraz",
   "engines": {
     "vscode": "^1.85.0"
