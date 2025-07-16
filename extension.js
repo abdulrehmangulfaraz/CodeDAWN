@@ -5,10 +5,7 @@ function activate(context) {
     console.log('Congratulations, your extension "CodeDawn" is now active!');
 
     const setApiKeyCommand = vscode.commands.registerCommand('codedawn.setApiKey', () => {
-        const config = vscode.workspace.getConfiguration('codedawn');
-        const geminiKey = config.get('geminiApiKey');
-        const settingId = geminiKey ? 'codedawn.geminiApiKey' : 'codedawn.groqApiKey';
-        vscode.commands.executeCommand('workbench.action.openSettings', settingId);
+        vscode.commands.executeCommand('workbench.action.openSettings', 'codedawn.geminiApiKey');
     });
 
     const focusOnGeminiCommand = vscode.commands.registerCommand('codedawn.focusOnGeminiKey', () => {
@@ -80,7 +77,6 @@ function extractCode(text) {
     return match ? match[1] : text;
 }
 
-// MODIFIED: The final, most helpful error handler
 async function handleApiError(error) {
     const errorMessage = error.message.toLowerCase();
 
@@ -105,6 +101,7 @@ async function handleApiError(error) {
     }
 }
 
+// MODIFIED: This function now has the correct logic flow.
 async function processRequest(userPrompt, editor, selection) {
     const outputTarget = isShellCommandQuery(userPrompt) ? 'terminal' : 'editor';
 
@@ -117,25 +114,30 @@ async function processRequest(userPrompt, editor, selection) {
     const groqKey = config.get('groqApiKey');
 
     let provider;
+    // Determine which provider to use
     if (geminiKey) {
         provider = 'Gemini';
     } else if (groqKey) {
         provider = 'Groq';
+    }
+
+    // Now, check if a provider was successfully determined.
+    if (provider) {
+        // If a key exists, proceed with the API call.
+        try {
+            await runApiCall(userPrompt, editor, selection, outputTarget, provider);
+        } catch (error) {
+            console.error(error);
+            handleApiError(error);
+        }
     } else {
+        // If no key was found, show the welcome/setup message.
         const selection = await vscode.window.showInformationMessage(
             'Welcome to CodeDawn! Please set your AI API Key to begin.', 'Open Settings'
         );
         if (selection === 'Open Settings') {
             vscode.commands.executeCommand('codedawn.setApiKey');
         }
-        return;
-    }
-
-    try {
-        await runApiCall(userPrompt, editor, selection, outputTarget, provider);
-    } catch (error) {
-        console.error(error);
-        handleApiError(error);
     }
 }
 
