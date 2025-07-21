@@ -24,53 +24,16 @@ function activate(context) {
         }
     });
     
-    const openTerminalCommand = vscode.commands.registerCommand('codedawn.openTerminal', () => {
-        const pty = new DawnInputTerminal();
-        const terminal = vscode.window.createTerminal({ name: 'DAWN Input', pty });
-        terminal.show();
-    });
-
     context.subscriptions.push(
         invokeCommand, 
-        openTerminalCommand, 
         setApiKeyCommand,
         focusOnGeminiCommand,
         focusOnGroqCommand
     );
 }
 
-class DawnInputTerminal {
-    constructor() { this.writeEmitter = new vscode.EventEmitter(); this.onDidWrite = this.writeEmitter.event; this.closeEmitter = new vscode.EventEmitter(); this.onDidClose = this.closeEmitter.event; this.commandLine = ''; }
-    open() { this.writeEmitter.fire('> '); }
-    close() {}
-    handleInput(data) {
-        if (data === '\r') {
-            this.writeEmitter.fire('\r\n');
-            const userPrompt = this.commandLine.trim();
-            if (userPrompt) {
-                const editor = vscode.window.activeTextEditor;
-                const selection = editor ? editor.selection : undefined;
-                processRequest(userPrompt, editor, selection).then(() => { this.closeEmitter.fire(); });
-            } else { this.closeEmitter.fire(); }
-        } else if (data === '\x7f') {
-            if (this.commandLine.length > 0) {
-                this.commandLine = this.commandLine.slice(0, -1);
-                this.writeEmitter.fire('\b \b');
-            }
-        } else {
-            this.commandLine += data;
-            this.writeEmitter.fire(data);
-        }
-    }
-}
-
 // --- Helper Functions ---
 
-function isShellCommandQuery(prompt) {
-    const keywords = ['git', 'docker', 'npm', 'yarn', 'ls', 'cd', 'mkdir', 'grep', 'find', 'ssh', 'list', 'show', 'files', 'command', 'terminal', 'shell', 'cli'];
-    const lowerCasePrompt = prompt.toLowerCase();
-    return keywords.some(keyword => lowerCasePrompt.includes(keyword));
-}
 function extractCode(text) {
     const codeBlockRegex = /```(?:\w+)?\n([\s\S]+?)\n```/;
     const match = text.match(codeBlockRegex);
@@ -101,9 +64,8 @@ async function handleApiError(error) {
     }
 }
 
-// MODIFIED: This function now has the correct logic flow.
 async function processRequest(userPrompt, editor, selection) {
-    const outputTarget = isShellCommandQuery(userPrompt) ? 'terminal' : 'editor';
+    const outputTarget = 'editor'; // Always target the editor
 
     if (outputTarget === 'editor' && !editor) {
         return vscode.window.showInformationMessage('No active editor to write to.');
@@ -151,16 +113,9 @@ async function runApiCall(userPrompt, editor, selection, outputTarget, provider)
 
     const generatedText = extractCode(resultText).trim();
 
-    if (outputTarget === 'terminal') {
-        let terminal = vscode.window.terminals.find(t => t.name !== 'DAWN Input');
-        if (!terminal) { terminal = vscode.window.createTerminal(); }
-        terminal.show();
-        terminal.sendText(generatedText, false);
-    } else {
-        editor.edit(editBuilder => {
-            editBuilder.replace(selection, generatedText);
-        });
-    }
+    editor.edit(editBuilder => {
+        editBuilder.replace(selection, generatedText);
+    });
 }
 
 function constructFullPrompt(userPrompt, editor, selection) {

@@ -1,166 +1,40 @@
+# 🌅 CodeDawn: Your Discreet AI Code Assistant
 
-# 🌅 CodeDawn — Your Discreet, Context-Aware AI Code Assistant for VS Code
+[![Version](https://img.shields.io/visual-studio-marketplace/v/abdulrehmangulfaraz.codedawn)](https://marketplace.visualstudio.com/items?itemName=abdulrehmangulfaraz.codedawn)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/abdulrehmangulfaraz.codedawn)](https://marketplace.visualstudio.com/items?itemName=abdulrehmangulfaraz.codedawn)
 
-> _The Dawn of Seamless Coding Assistance Begins Here._
+Stop switching contexts. CodeDawn is a minimalist AI assistant that integrates directly into your editor, providing powerful, context-aware code suggestions without the clutter of traditional AI tools.
 
-## 🔮 Overview
+## Why CodeDawn?
 
-**CodeDawn** is a **minimalist yet powerful AI assistant** for Visual Studio Code — engineered to provide **context-aware code suggestions** and **terminal commands** with a **single keystroke**, no distractions, and no intrusive popups.
+In a world of complex AI tools, CodeDawn is designed with a simple philosophy: **great tools stay out of your way.** It's built for developers who want intelligent assistance without leaving their coding flow. No intrusive popups, no unnecessary UI—just the help you need, right when you need it.
 
-Designed for developers who want help without leaving their flow.
+## Key Features
 
-## 💡 Philosophy
+-   **🧠 Context-Aware Intelligence:** CodeDawn automatically detects your selected code and file type, providing highly relevant and accurate suggestions.
+-   **⚡️ Frictionless Workflow:** Invoke the AI with a single hotkey (`Ctrl+L` / `Cmd+L`). Type your request, press Enter, and watch the code appear directly in your editor.
+-   **🚀 Dual AI Engine Support:** Get the best of both worlds. CodeDawn uses Google's powerful **Gemini 1.5 Flash** for high-quality results and can fall back on the lightning-fast **Groq (LLaMA3)**.
+-   **✍️ Direct Code Insertion:** Generated code replaces your selected text or is inserted at your cursor, seamlessly integrating with your work.
 
-> “Great tools stay out of your way.”
+## How to Use
 
-CodeDawn was built with the belief that AI in the editor should **feel like magic** — invisible yet intelligent. Inspired by the gentle light of dawn that reveals detail without glare, CodeDawn:
+1.  **Invoke:** Press `Ctrl+L` (or `Cmd+L` on Mac).
+2.  **Request:** Type what you need. For example:
+    -   _"refactor this function to use async/await"_
+    -   _"add JSDoc comments"_
+    -   _"convert this JSON to a TypeScript interface"_
+3.  **Receive:** Press `Enter`. The code appears in your editor.
 
--   Understands your **active code context**
-    
--   Responds **intuitively** to your commands
-    
--   Inserts output **silently and intelligently**
-    
--   Feels like a **natural part** of VS Code
-    
+## Quick Setup
 
-## ⚙️ Key Features
-
-### 🧠 Context-Aware Intelligence
-
--   Detects **selected code block**
-    
--   Infers **language type** (Python, JS, etc.)
-    
--   Sends enriched prompt with context to AI models
-    
-
-### 🎛️ Frictionless UI
-
--   ✅ `Ctrl+L` / `Cmd+L`: Launch code prompt (like the Command Palette)
-    
--   ✅ `Ctrl+Shift+L` / `Cmd+Shift+L`: Launch terminal AI assistant
-    
--   🔁 Auto-inserts code or terminal command without breaking flow
-    
-
-### 🚀 Dual AI Engine Support
-
--   🔹 **Gemini (1.5 Flash)** by Google _(Preferred if configured)_
-    
--   🔸 **Groq (LLaMA3-8B-8192)**  _(Fallback or standalone)_
-    
-
-## 🛠️ Installation & Setup
-
-### 1. 📦 Install Extension
-
--   Open VS Code
-    
--   Go to **Extensions** panel `Ctrl+Shift+X`
-    
--   Search for `CodeDawn` and install
-    
-
-### 2. 🔐 Configure API Keys
-
--   Go to `File > Preferences > Settings`
-    
--   Search for **CodeDawn**
-    
-
-#### 🔹 Gemini API Key (Recommended)
-
--   Get your key from [Google AI Studio](https://aistudio.google.com/app/apikey "null")
-    
--   Paste it in `codedawn.geminiApiKey`
-    
-
-#### 🔸 Groq API Key (Optional / Fallback)
-
--   Get your key from [GroqCloud Console](https://console.groq.com/keys "null")
-    
--   Paste it in `codedawn.groqApiKey`
-    
+1.  **Install:** Find "CodeDawn" in the VS Code Extensions panel and click Install.
+2.  **Configure API Key:**
+    -   Open Settings (`File > Preferences > Settings`) and search for "CodeDawn".
+    -   Enter your API key for **Gemini** (recommended) or **Groq**. The extension will use the key that you provide.
+    -   You can get free keys from [Google AI Studio](https://aistudio.google.com/app/apikey) or [GroqCloud Console](https://console.groq.com/keys).
 
 ---
 
-## 📂 Project Structure
-
-| File             | Purpose |
-|------------------|---------|
-| `extension.js`   | 🔧 Core logic (commands, context detection, API calls, insertion) |
-| `package.json`   | 📦 Metadata, commands, keybindings, configuration schema |
-| `.gitignore`     | 🚫 Version control exclusions |
-| `package-lock.json` | 📌 Locked dependencies for consistent installs |
-
----
-
-## 🔍 Behind the Scenes (Technical Overview)
-
--   🧠 Prompt logic instructs the AI to classify requests and return structured JSON
-    
--   ⚡ Uses `node-fetch` to communicate with AI APIs
-    
--   🎯 Reliably distinguishes between _editor code requests_ and _terminal shell prompts_
-    
--   🔁 Smart command routing for terminal/code-injection based on AI classification
-    
-
-## 📅 Roadmap
-
-### ✅ Phase 0 — Vision & Planning _(Completed)_
-
--   Philosophy & tool direction finalized
-    
--   Feature layout and architecture mapped
-    
-
-### ✅ Phase 1 — Core Integration _(Completed)_
-
--   Hotkey-driven Command Palette interface
-    
--   API integration with Gemini & Groq
-    
--   Inline code suggestion & editor insertion
-    
-
-### ✅ Phase 2 — Terminal Awareness _(Completed)_
-
--   Dedicated terminal for AI shell command input
-    
--   Context-aware routing to terminal/editor
-    
--   Enhanced reliability and UX polish
-    
-
-### 🛣️ Upcoming Features
-
--   Multi-file context
-    
--   Customizable prompt templates
-    
--   AI-assisted debugging
-    
--   Support for more AI providers
-    
-
-## 🤝 Contributing
-
-We welcome contributions from the community!
-
-See the [CONTRIBUTING.md](./CONTRIBUTING.md) file for details on how to get started.
-
-## 📜 License
-
-CodeDawn is released under the **MIT License**.
-
-See the [LICENSE](./LICENSE) file for details.
-
-## 🌠 Final Words
-
-> “Let AI illuminate your code — not interrupt it.”
-
-**CodeDawn** is designed to be more than a tool — it’s your silent coding partner. Elegant. Intelligent. Invisible.
+CodeDawn is designed to feel like a natural extension of VS Code—elegant, intelligent, and invisible.
 
 **Made with 🧠, 👨🏻‍💻, and ❤️ by Abdulrehman**

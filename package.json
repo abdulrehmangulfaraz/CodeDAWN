@@ -2,7 +2,7 @@
   "name": "codedawn",
   "displayName": "CodeDawn",
   "description": "A discreet, powerful, and context-aware AI code assistant.",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "publisher": "abdulrehmangulfaraz",
   "engines": {
     "vscode": "^1.85.0"
@@ -17,7 +17,6 @@
   ],
   "activationEvents": [
     "onCommand:codedawn.invoke",
-    "onCommand:codedawn.openTerminal",
     "onCommand:codedawn.setApiKey",
     "onCommand:codedawn.focusOnGeminiKey",
     "onCommand:codedawn.focusOnGroqKey"
@@ -28,10 +27,6 @@
       {
         "command": "codedawn.invoke",
         "title": "CodeDawn: Invoke (Ctrl+L)"
-      },
-      {
-        "command": "codedawn.openTerminal",
-        "title": "CodeDawn: Invoke with Terminal (Ctrl+Shift+L)"
       },
       {
         "command": "codedawn.setApiKey",
@@ -52,12 +47,6 @@
         "key": "ctrl+l",
         "mac": "cmd+l",
         "when": "editorTextFocus"
-      },
-      {
-        "command": "codedawn.openTerminal",
-        "key": "ctrl+shift+l",
-        "mac": "cmd+shift+l",
-        "when": "editorTextFocus"
       }
     ],
     "configuration": {
@@ -67,13 +56,13 @@
           "type": "string",
           "default": "",
           "description": "(Recommended) Your API Key for the Gemini API. If both keys are entered, Gemini will be used.",
-          "markdownDescription": "Enter your Google Gemini API Key. You can get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).\n\n[Prefer to use Groq?](command:codedawn.focusOnGroqKey)"
+          "markdownDescription": "Enter your Google Gemini API Key. You can get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).\\n\\n[Prefer to use Groq?](command:codedawn.focusOnGroqKey)"
         },
         "codedawn.groqApiKey": {
           "type": "string",
           "default": "",
           "description": "Your API Key for the Groq API.",
-          "markdownDescription": "Enter your Groq API Key. You can get a free key from [GroqCloud](https://console.groq.com/keys).\n\n[Prefer to use Gemini?](command:codedawn.focusOnGeminiKey)"
+          "markdownDescription": "Enter your Groq API Key. You can get a free key from [GroqCloud](https://console.groq.com/keys).\\n\\n[Prefer to use Gemini?](command:codedawn.focusOnGeminiKey)"
         }
       }
     }
@@ -93,6 +82,4 @@
   "dependencies": {
     "node-fetch": "^2.7.0"
   }
-
-
 }
